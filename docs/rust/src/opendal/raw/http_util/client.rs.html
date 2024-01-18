@@ -368,8 +368,8 @@
                 </span>err.is_status()
             );
 
-            <span class="kw">let </span><span class="kw-2">mut </span>oerr = Error::new(ErrorKind::Unexpected, <span class="string">"send async request"</span>)
-                .with_operation(<span class="string">"http_util::Client::send_async"</span>)
+            <span class="kw">let </span><span class="kw-2">mut </span>oerr = Error::new(ErrorKind::Unexpected, <span class="string">"send http request"</span>)
+                .with_operation(<span class="string">"http_util::Client::send"</span>)
                 .with_context(<span class="string">"url"</span>, uri.to_string())
                 .set_source(err);
             <span class="kw">if </span>is_temporary {
