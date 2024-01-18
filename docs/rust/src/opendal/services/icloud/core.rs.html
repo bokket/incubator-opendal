@@ -980,8 +980,6 @@
 <a href="#978" id="978">978</a>
 <a href="#979" id="979">979</a>
 <a href="#980" id="980">980</a>
-<a href="#981" id="981">981</a>
-<a href="#982" id="982">982</a>
 </pre></div><pre class="rust"><code><span class="comment">// Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -1608,8 +1606,7 @@
         zone: <span class="kw-2">&amp;</span>str,
         args: OpRead,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;IncomingAsyncBody&gt;&gt; {
-        <span class="comment">//https://p219-docws.icloud.com.cn:443
-        </span><span class="kw">let </span>uri = <span class="macro">format!</span>(
+        <span class="kw">let </span>uri = <span class="macro">format!</span>(
             <span class="string">"{}\
         /ws/{}/download/by_id?document_id={}"</span>,
             <span class="self">self</span>.docw_url, zone, id
@@ -1659,8 +1656,7 @@
     <span class="kw">let </span>bs = body.bytes().<span class="kw">await</span><span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>kind = <span class="kw">match </span>parts.status.as_u16() {
-        <span class="comment">//status:421 Misdirected Request
-        </span><span class="number">421 </span>| <span class="number">450 </span>| <span class="number">500 </span>=&gt; ErrorKind::NotFound,
+        <span class="number">421 </span>| <span class="number">450 </span>| <span class="number">500 </span>=&gt; ErrorKind::NotFound,
         <span class="number">401 </span>=&gt; ErrorKind::Unexpected,
         <span class="kw">_ </span>=&gt; ErrorKind::Unexpected,
     };
