@@ -839,40 +839,6 @@
 <a href="#837" id="837">837</a>
 <a href="#838" id="838">838</a>
 <a href="#839" id="839">839</a>
-<a href="#840" id="840">840</a>
-<a href="#841" id="841">841</a>
-<a href="#842" id="842">842</a>
-<a href="#843" id="843">843</a>
-<a href="#844" id="844">844</a>
-<a href="#845" id="845">845</a>
-<a href="#846" id="846">846</a>
-<a href="#847" id="847">847</a>
-<a href="#848" id="848">848</a>
-<a href="#849" id="849">849</a>
-<a href="#850" id="850">850</a>
-<a href="#851" id="851">851</a>
-<a href="#852" id="852">852</a>
-<a href="#853" id="853">853</a>
-<a href="#854" id="854">854</a>
-<a href="#855" id="855">855</a>
-<a href="#856" id="856">856</a>
-<a href="#857" id="857">857</a>
-<a href="#858" id="858">858</a>
-<a href="#859" id="859">859</a>
-<a href="#860" id="860">860</a>
-<a href="#861" id="861">861</a>
-<a href="#862" id="862">862</a>
-<a href="#863" id="863">863</a>
-<a href="#864" id="864">864</a>
-<a href="#865" id="865">865</a>
-<a href="#866" id="866">866</a>
-<a href="#867" id="867">867</a>
-<a href="#868" id="868">868</a>
-<a href="#869" id="869">869</a>
-<a href="#870" id="870">870</a>
-<a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
 </pre></div><pre class="rust"><code><span class="comment">// Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -892,7 +858,6 @@
 
 </span><span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>bytes::{Buf, Bytes};
-<span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::fmt::{Debug, Formatter};
 <span class="kw">use </span>std::sync::Arc;
 
@@ -944,8 +909,6 @@
 
     scnt: <span class="prelude-ty">Option</span>&lt;String&gt;,
     account_country: <span class="prelude-ty">Option</span>&lt;String&gt;,
-    cookies: BTreeMap&lt;String, String&gt;,
-
     drivews_url: String,
     docws_url: String,
 }
@@ -958,7 +921,6 @@
             session_token: <span class="prelude-val">None</span>,
             scnt: <span class="prelude-val">None</span>,
             account_country: <span class="prelude-val">None</span>,
-            cookies: Default::default(),
             drivews_url: String::new(),
             docws_url: String::new(),
         }
@@ -1003,79 +965,81 @@
     }
 
     <span class="doccomment">/// iCloud will use our oauth state as client id.
-    </span><span class="kw">pub fn </span>client_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
+    </span><span class="kw">pub fn </span>client_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>str {
         <span class="kw-2">&amp;</span><span class="self">self</span>.data.oauth_state
     }
 
     <span class="kw">async fn </span>init(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
         <span class="comment">// Sign the auth endpoint first.
-        </span><span class="kw">let </span>uri = <span class="macro">format!</span>(<span class="string">"{}/signin?isRememberMeEnable=true"</span>, AUTH_ENDPOINT);
-        <span class="kw">let </span>body = serde_json::to_vec(<span class="kw-2">&amp;</span><span class="macro">json!</span>({
-            <span class="string">"accountName" </span>: <span class="self">self</span>.apple_id,
-            <span class="string">"password" </span>: <span class="self">self</span>.password,
-            <span class="string">"rememberMe"</span>: <span class="bool-val">true</span>,
-            <span class="string">"trustTokens"</span>: [<span class="self">self</span>.trust_token.clone().unwrap()],
-        }))
-        .map_err(new_json_serialize_error)<span class="question-mark">?</span>;
+        </span><span class="kw">if </span>!<span class="self">self</span>.initiated {
+            <span class="kw">let </span>uri = <span class="macro">format!</span>(<span class="string">"{}/signin?isRememberMeEnable=true"</span>, AUTH_ENDPOINT);
+            <span class="kw">let </span>body = serde_json::to_vec(<span class="kw-2">&amp;</span><span class="macro">json!</span>({
+                <span class="string">"accountName" </span>: <span class="self">self</span>.apple_id,
+                <span class="string">"password" </span>: <span class="self">self</span>.password,
+                <span class="string">"rememberMe"</span>: <span class="bool-val">true</span>,
+                <span class="string">"trustTokens"</span>: [<span class="self">self</span>.trust_token.clone().unwrap()],
+            }))
+            .map_err(new_json_serialize_error)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>req = Request::post(uri)
-            .header(header::CONTENT_TYPE, <span class="string">"application/json"</span>)
-            .body(AsyncBody::Bytes(Bytes::from(body)))
-            .map_err(new_request_build_error)<span class="question-mark">?</span>;
-        <span class="self">self</span>.sign(<span class="kw-2">&amp;mut </span>req)<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>req = Request::post(uri)
+                .header(header::CONTENT_TYPE, <span class="string">"application/json"</span>)
+                .body(AsyncBody::Bytes(Bytes::from(body)))
+                .map_err(new_request_build_error)<span class="question-mark">?</span>;
+            <span class="self">self</span>.sign(<span class="kw-2">&amp;mut </span>req)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>resp = <span class="self">self</span>.client.send(req).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if </span>resp.status() != StatusCode::OK {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(parse_error(resp).<span class="kw">await</span><span class="question-mark">?</span>);
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(rscd) = resp.headers().get(APPLE_RESPONSE_HEADER) {
-            <span class="kw">let </span>status_code = StatusCode::from_bytes(rscd.as_bytes()).unwrap();
-            <span class="kw">if </span>status_code != StatusCode::CONFLICT {
+            <span class="kw">let </span>resp = <span class="self">self</span>.client.send(req).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">if </span>resp.status() != StatusCode::OK {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(parse_error(resp).<span class="kw">await</span><span class="question-mark">?</span>);
             }
-        }
 
-        <span class="comment">// Setup to get the session id.
-        </span><span class="kw">let </span>uri = <span class="macro">format!</span>(<span class="string">"{}/accountLogin"</span>, SETUP_ENDPOINT);
-        <span class="kw">let </span>body = serde_json::to_vec(<span class="kw-2">&amp;</span><span class="macro">json!</span>({
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(rscd) = resp.headers().get(APPLE_RESPONSE_HEADER) {
+                <span class="kw">let </span>status_code = StatusCode::from_bytes(rscd.as_bytes()).unwrap();
+                <span class="kw">if </span>status_code != StatusCode::CONFLICT {
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(parse_error(resp).<span class="kw">await</span><span class="question-mark">?</span>);
+                }
+            }
+
+            <span class="comment">// Setup to get the session id.
+            </span><span class="kw">let </span>uri = <span class="macro">format!</span>(<span class="string">"{}/accountLogin"</span>, SETUP_ENDPOINT);
+            <span class="kw">let </span>body = serde_json::to_vec(<span class="kw-2">&amp;</span><span class="macro">json!</span>({
             <span class="string">"accountCountryCode"</span>: <span class="self">self</span>.data.account_country.clone().unwrap_or_default(),
             <span class="string">"dsWebAuthToken"</span>:<span class="self">self</span>.ds_web_auth_token.clone().unwrap_or_default(),
             <span class="string">"extended_login"</span>: <span class="bool-val">true</span>,
-            <span class="string">"trustToken"</span>: <span class="self">self</span>.trust_token.clone().unwrap_or_default(),
-        }))
-        .map_err(new_json_serialize_error)<span class="question-mark">?</span>;
+            <span class="string">"trustToken"</span>: <span class="self">self</span>.trust_token.clone().unwrap_or_default(),}))
+            .map_err(new_json_serialize_error)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>req = Request::post(uri)
-            .header(header::CONTENT_TYPE, <span class="string">"application/json"</span>)
-            .body(AsyncBody::Bytes(Bytes::from(body)))
-            .map_err(new_request_build_error)<span class="question-mark">?</span>;
-        <span class="self">self</span>.sign(<span class="kw-2">&amp;mut </span>req)<span class="question-mark">?</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>req = Request::post(uri)
+                .header(header::CONTENT_TYPE, <span class="string">"application/json"</span>)
+                .body(AsyncBody::Bytes(Bytes::from(body)))
+                .map_err(new_request_build_error)<span class="question-mark">?</span>;
+            <span class="self">self</span>.sign(<span class="kw-2">&amp;mut </span>req)<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>resp = <span class="self">self</span>.client.send(req).<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">if </span>resp.status() != StatusCode::OK {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(parse_error(resp).<span class="kw">await</span><span class="question-mark">?</span>);
+            <span class="kw">let </span>resp = <span class="self">self</span>.client.send(req).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">if </span>resp.status() != StatusCode::OK {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(parse_error(resp).<span class="kw">await</span><span class="question-mark">?</span>);
+            }
+
+            <span class="comment">// Updata SessionData cookies.We need obtain `X-APPLE-WEBAUTH-USER` cookie to get file.
+            </span><span class="self">self</span>.update(<span class="kw-2">&amp;</span>resp)<span class="question-mark">?</span>;
+
+            <span class="kw">let </span>bs = resp.into_body().bytes().<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let </span>auth_info: IcloudWebservicesResponse =
+                serde_json::from_slice(<span class="kw-2">&amp;</span>bs).map_err(new_json_deserialize_error)<span class="question-mark">?</span>;
+
+            <span class="comment">// Check if we have extra challenge to take.
+            </span><span class="kw">if </span>auth_info.hsa_challenge_required &amp;&amp; !auth_info.hsa_trusted_browser {
+                <span class="kw">return </span><span class="prelude-val">Err</span>(Error::new(ErrorKind::Unexpected, <span class="string">"Apple icloud AuthenticationFailed:Unauthorized request:Needs two-factor authentication"</span>));
+            }
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="kw-2">&amp;</span>auth_info.webservices.drivews.url {
+                <span class="self">self</span>.data.drivews_url = v.to_string();
+            }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="kw-2">&amp;</span>auth_info.webservices.docws.url {
+                <span class="self">self</span>.data.docws_url = v.to_string();
+            }
+
+            <span class="self">self</span>.initiated = <span class="bool-val">true</span>;
         }
-
-        <span class="comment">// Updata SessionData cookies.We need obtain `X-APPLE-WEBAUTH-USER` cookie to get file.
-        </span><span class="self">self</span>.update(<span class="kw-2">&amp;</span>resp)<span class="question-mark">?</span>;
-
-        <span class="kw">let </span>bs = resp.into_body().bytes().<span class="kw">await</span><span class="question-mark">?</span>;
-        <span class="kw">let </span>auth_info: IcloudWebservicesResponse =
-            serde_json::from_slice(<span class="kw-2">&amp;</span>bs).map_err(new_json_deserialize_error)<span class="question-mark">?</span>;
-
-        <span class="comment">// Check if we have extra challenge to take.
-        </span><span class="kw">if </span>auth_info.hsa_challenge_required &amp;&amp; !auth_info.hsa_trusted_browser {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(Error::new(ErrorKind::Unexpected, <span class="string">"Apple icloud AuthenticationFailed:Unauthorized request:Needs two-factor authentication"</span>));
-        }
-
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="kw-2">&amp;</span>auth_info.webservices.drivews.url {
-            <span class="self">self</span>.data.drivews_url = v.to_string();
-        }
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(v) = <span class="kw-2">&amp;</span>auth_info.webservices.docws.url {
-            <span class="self">self</span>.data.docws_url = v.to_string();
-        }
-
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1115,19 +1079,6 @@
             );
         }
 
-        <span class="kw">if </span>!<span class="self">self</span>.data.cookies.is_empty() {
-            <span class="kw">let </span>cookies: Vec&lt;String&gt; = <span class="self">self
-                </span>.data
-                .cookies
-                .iter()
-                .map(|(k, v)| <span class="macro">format!</span>(<span class="string">"{}={}"</span>, k, v))
-                .collect();
-            headers.insert(
-                header::COOKIE,
-                cookies.as_slice().join(<span class="string">"; "</span>).parse().unwrap(),
-            );
-        }
-
         <span class="kw">for </span>(key, value) <span class="kw">in </span>AUTH_HEADERS {
             headers.insert(key, build_header_value(value)<span class="question-mark">?</span>);
         }
@@ -1141,7 +1092,6 @@
         </span>{
             <span class="self">self</span>.data.account_country = <span class="prelude-val">Some</span>(account_country.to_string());
         }
-
         <span class="kw">if let </span><span class="prelude-val">Some</span>(session_id) = parse_header_to_str(resp.headers(), SESSION_ID_HEADER)<span class="question-mark">? </span>{
             <span class="self">self</span>.data.session_id = <span class="prelude-val">Some</span>(session_id.to_string());
         }
@@ -1151,18 +1101,6 @@
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(scnt) = parse_header_to_str(resp.headers(), SCNT_HEADER)<span class="question-mark">? </span>{
             <span class="self">self</span>.data.scnt = <span class="prelude-val">Some</span>(scnt.to_string());
-        }
-
-        <span class="kw">for </span>(key, value) <span class="kw">in </span>resp.headers() {
-            <span class="kw">if </span>key == header::SET_COOKIE {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(cookie) = value.to_str().unwrap().split(<span class="string">';'</span>).next() {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>((key, value)) = cookie.split_once(<span class="string">'='</span>) {
-                        <span class="self">self</span>.data
-                            .cookies
-                            .insert(String::from(key), String::from(value));
-                    }
-                }
-            }
         }
 
         <span class="prelude-val">Ok</span>(())
@@ -1177,12 +1115,6 @@
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         <span class="kw-2">mut </span>req: Request&lt;AsyncBody&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Response&lt;IncomingAsyncBody&gt;&gt; {
-        <span class="comment">// Init the signer first.
-        </span><span class="kw">if </span><span class="self">self</span>.initiated {
-            <span class="self">self</span>.init().<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="self">self</span>.initiated = <span class="bool-val">true</span>;
-        }
-
         <span class="self">self</span>.sign(<span class="kw-2">&amp;mut </span>req)<span class="question-mark">?</span>;
         <span class="kw">let </span>resp = <span class="self">self</span>.client.send(req).<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -1402,8 +1334,8 @@
 
     <span class="kw">async fn </span>create_dir(<span class="kw-2">&amp;</span><span class="self">self</span>, parent_id: <span class="kw-2">&amp;</span>str, name: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>signer = <span class="self">self</span>.signer.lock().<span class="kw">await</span>;
-        <span class="kw">let </span>clone = signer.clone();
-        <span class="kw">let </span>client_id = clone.client_id();
+
+        <span class="kw">let </span>client_id = signer.client_id().to_string();
 
         <span class="kw">let </span>drivews_url = signer.drivews_url().<span class="kw">await</span><span class="question-mark">?</span>;
 
