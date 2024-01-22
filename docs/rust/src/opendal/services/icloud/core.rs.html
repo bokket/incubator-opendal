@@ -871,9 +871,6 @@
 <a href="#869" id="869">869</a>
 <a href="#870" id="870">870</a>
 <a href="#871" id="871">871</a>
-<a href="#872" id="872">872</a>
-<a href="#873" id="873">873</a>
-<a href="#874" id="874">874</a>
 </pre></div><pre class="rust"><code><span class="comment">// Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -959,7 +956,7 @@
             scnt: <span class="prelude-val">None</span>,
             account_country: <span class="prelude-val">None</span>,
 
-            cookies: Default::default(),
+            cookies: BTreeMap::default(),
             drivews_url: String::new(),
             docws_url: String::new(),
         }
@@ -992,18 +989,14 @@
     <span class="doccomment">/// Get the drivews_url from signer session data.
     /// Async await init finish.
     </span><span class="kw">pub async fn </span>drivews_url(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
-        <span class="kw">if </span>!<span class="self">self</span>.initiated {
-            <span class="self">self</span>.init().<span class="kw">await</span><span class="question-mark">?</span>;
-        }
+        <span class="self">self</span>.init().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.data.drivews_url)
     }
 
     <span class="doccomment">/// Get the docws_url from signer session data.
     /// Async await init finish.
     </span><span class="kw">pub async fn </span>docws_url(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>str&gt; {
-        <span class="kw">if </span>!<span class="self">self</span>.initiated {
-            <span class="self">self</span>.init().<span class="kw">await</span><span class="question-mark">?</span>;
-        }
+        <span class="self">self</span>.init().<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.data.docws_url)
     }
 
@@ -1133,7 +1126,7 @@
                 .collect();
             headers.insert(
                 header::COOKIE,
-                cookies.as_slice().join(<span class="string">"; "</span>).parse().unwrap(),
+                build_header_value(<span class="kw-2">&amp;</span>cookies.as_slice().join(<span class="string">"; "</span>))<span class="question-mark">?</span>,
             );
         }
 
@@ -1161,15 +1154,16 @@
             <span class="self">self</span>.data.scnt = <span class="prelude-val">Some</span>(scnt.to_string());
         }
 
-        <span class="kw">for </span>(key, value) <span class="kw">in </span>resp.headers() {
-            <span class="kw">if </span>key == header::SET_COOKIE {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(cookie) = value.to_str().unwrap().split(<span class="string">';'</span>).next() {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>((key, value)) = cookie.split_once(<span class="string">'='</span>) {
-                        <span class="self">self</span>.data
-                            .cookies
-                            .insert(String::from(key), String::from(value));
-                    }
-                }
+        <span class="kw">let </span>cookies: Vec&lt;String&gt; = resp
+            .headers()
+            .get_all(header::SET_COOKIE)
+            .iter()
+            .map(|v| v.to_str().unwrap().to_string())
+            .collect();
+
+        <span class="kw">for </span>cookie <span class="kw">in </span>cookies {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>((key, value)) = cookie.split_once(<span class="string">'='</span>) {
+                <span class="self">self</span>.data.cookies.insert(key.into(), value.into());
             }
         }
 
